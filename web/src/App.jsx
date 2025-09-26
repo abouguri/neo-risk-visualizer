@@ -1,0 +1,556 @@
+import React, { useState, useCallback } from 'react'
+import { AlertTriangle, Zap, Shield, Info, Github, ExternalLink } from 'lucide-react'
+// Import components (we'll create these next)
+// import ImpactMap from './components/Map/ImpactMap'
+// import ParameterPanel from './components/Simulation/ParameterPanel'
+// import ResultsPanel from './components/Simulation/ResultsPanel'
+// import MitigationPanel from './components/Mitigation/MitigationPanel'
+// import LoadingSpinner from './components/Common/LoadingSpinner'
+// import InfoTooltip from './components/Common/InfoTooltip'
+
+// Temporary placeholder components
+const ImpactMap = ({ simulationData, mitigationData, onLocationSelect, selectedLocation }) => (
+  <div className="w-full h-full relative overflow-hidden space-bg">
+    <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-black/40"></div>
+    
+    {/* Map Placeholder with Earth visualization */}
+    <div className="w-full h-full flex items-center justify-center relative z-10">
+      <div className="text-center space-y-6 glass p-8 rounded-2xl max-w-md mx-4">
+        <div className="relative">
+          <div className="text-8xl animate-float mb-4 filter drop-shadow-lg">🌍</div>
+          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-2">
+            <div className="text-2xl animate-pulse-slow">☄️</div>
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent">
+            Interactive Earth Map
+          </h3>
+          <p className="text-gray-300">Click anywhere to set impact location</p>
+          <p className="text-sm text-gray-400">Mapbox 3D visualization ready for integration</p>
+        </div>
+        
+        {selectedLocation && (
+          <div className="space-panel-dark p-4 border border-blue-500/50">
+            <div className="text-sm text-blue-300 font-medium mb-2">📍 Target Coordinates</div>
+            <div className="font-mono text-white">
+              Lat: {selectedLocation.lat.toFixed(4)}°<br/>
+              Lon: {selectedLocation.lon.toFixed(4)}°
+            </div>
+          </div>
+        )}
+        
+        {simulationData && (
+          <div className="space-panel-dark p-4 border-l-4 border-red-500 animate-pulse">
+            <div className="text-red-300 font-medium">⚠️ Impact Simulated</div>
+            <div className="text-xs text-gray-400 mt-1">
+              Effect zones would be visualized on real map
+            </div>
+          </div>
+        )}
+        
+        <button 
+          className="btn-primary text-sm"
+          onClick={() => onLocationSelect({ lat: 40.7128, lon: -74.0060 })}
+        >
+          📍 Set NYC as Target
+        </button>
+      </div>
+    </div>
+    
+    {/* Floating particles/stars */}
+    <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute top-10 left-10 w-1 h-1 bg-white rounded-full animate-pulse opacity-60"></div>
+      <div className="absolute top-20 right-20 w-1 h-1 bg-blue-300 rounded-full animate-pulse opacity-40"></div>
+      <div className="absolute bottom-20 left-20 w-1 h-1 bg-purple-300 rounded-full animate-pulse opacity-50"></div>
+      <div className="absolute bottom-10 right-10 w-1 h-1 bg-white rounded-full animate-pulse opacity-70"></div>
+      <div className="absolute top-1/2 left-1/4 w-1 h-1 bg-yellow-300 rounded-full animate-pulse opacity-30"></div>
+    </div>
+  </div>
+)
+
+const ParameterPanel = ({ selectedLocation, onSimulationStart, onSimulationComplete, onError }) => (
+  <div className="space-y-6">
+    <div className="text-center">
+      <h3 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+        Asteroid Parameters
+      </h3>
+      <p className="text-sm text-gray-400 mt-1">Configure impact scenario</p>
+    </div>
+    
+    <div className="space-y-4">
+      <div className="space-panel-dark p-4 space-y-3">
+        <label className="block text-sm font-medium text-blue-300">
+          <span className="flex items-center gap-2">
+            🪨 Asteroid Diameter (m)
+          </span>
+        </label>
+        <input 
+          type="number" 
+          defaultValue="100" 
+          className="space-input w-full"
+          placeholder="10 - 10000"
+        />
+        
+        <label className="block text-sm font-medium text-blue-300">
+          <span className="flex items-center gap-2">
+            ⚡ Impact Velocity (km/s)
+          </span>
+        </label>
+        <input 
+          type="number" 
+          defaultValue="20" 
+          className="space-input w-full"
+          placeholder="5 - 100"
+        />
+        
+        <label className="block text-sm font-medium text-blue-300">
+          <span className="flex items-center gap-2">
+            📐 Impact Angle (°)
+          </span>
+        </label>
+        <input 
+          type="number" 
+          defaultValue="45" 
+          className="space-input w-full"
+          placeholder="1 - 90"
+        />
+        
+        <label className="block text-sm font-medium text-blue-300">
+          <span className="flex items-center gap-2">
+            ⚖️ Density (kg/m³)
+          </span>
+        </label>
+        <input 
+          type="number" 
+          defaultValue="2500" 
+          className="space-input w-full"
+          placeholder="1000 - 8000"
+        />
+      </div>
+      
+      {selectedLocation && (
+        <div className="space-panel-dark p-3 border-l-4 border-warning">
+          <div className="text-xs text-gray-400">Impact Location</div>
+          <div className="text-sm font-mono text-white">
+            {selectedLocation.lat.toFixed(4)}°, {selectedLocation.lon.toFixed(4)}°
+          </div>
+        </div>
+      )}
+      
+      <button 
+        className="btn-warning w-full text-lg font-bold glow-warning animate-float"
+        onClick={() => {
+          onSimulationStart()
+          // Simulate API call
+          setTimeout(() => {
+            onSimulationComplete({
+              energy: "1.2 TJ",
+              craterDiameter: "1.5 km",
+              blastRadius: "5 km",
+              thermalRadius: "8.2 km",
+              populationAffected: "~250,000"
+            })
+          }, 2000)
+        }}
+      >
+        🚀 SIMULATE IMPACT
+      </button>
+    </div>
+  </div>
+)
+
+const ResultsPanel = ({ data }) => (
+  <div className="space-y-6">
+    <div className="text-center">
+      <h3 className="text-xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
+        Impact Assessment
+      </h3>
+      <p className="text-sm text-gray-400 mt-1">Predicted effects & casualties</p>
+    </div>
+    
+    <div className="space-y-4">
+      {/* Key Metrics */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-panel-dark p-3 text-center glow-danger">
+          <div className="text-2xl mb-1">💥</div>
+          <div className="text-xs text-gray-400">Energy</div>
+          <div className="text-lg font-bold text-red-400">{data.energy}</div>
+        </div>
+        
+        <div className="space-panel-dark p-3 text-center">
+          <div className="text-2xl mb-1">🕳️</div>
+          <div className="text-xs text-gray-400">Crater</div>
+          <div className="text-lg font-bold text-yellow-400">{data.craterDiameter}</div>
+        </div>
+        
+        <div className="space-panel-dark p-3 text-center">
+          <div className="text-2xl mb-1">💨</div>
+          <div className="text-xs text-gray-400">Blast Zone</div>
+          <div className="text-lg font-bold text-orange-400">{data.blastRadius}</div>
+        </div>
+        
+        <div className="space-panel-dark p-3 text-center">
+          <div className="text-2xl mb-1">🔥</div>
+          <div className="text-xs text-gray-400">Thermal</div>
+          <div className="text-lg font-bold text-red-400">{data.thermalRadius}</div>
+        </div>
+      </div>
+      
+      {/* Population Impact */}
+      <div className="space-panel-dark p-4 border-l-4 border-red-500">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-2xl">👥</span>
+          <span className="font-semibold text-red-300">Population at Risk</span>
+        </div>
+        <div className="text-3xl font-bold text-red-400">
+          {data.populationAffected}
+        </div>
+        <div className="text-xs text-gray-400 mt-1">
+          Within primary blast zone
+        </div>
+      </div>
+      
+      {/* Detailed breakdown */}
+      <div className="space-panel-dark p-4">
+        <div className="text-sm font-medium text-blue-300 mb-3">Effect Zones</div>
+        <div className="space-y-2 text-xs">
+          <div className="flex justify-between items-center py-1 border-b border-white/10">
+            <span className="text-gray-400">💥 Total destruction</span>
+            <span className="text-red-400 font-mono">2.1 km</span>
+          </div>
+          <div className="flex justify-between items-center py-1 border-b border-white/10">
+            <span className="text-gray-400">🏢 Heavy damage</span>
+            <span className="text-orange-400 font-mono">{data.blastRadius}</span>
+          </div>
+          <div className="flex justify-between items-center py-1 border-b border-white/10">
+            <span className="text-gray-400">🔥 3rd degree burns</span>
+            <span className="text-yellow-400 font-mono">{data.thermalRadius}</span>
+          </div>
+          <div className="flex justify-between items-center py-1">
+            <span className="text-gray-400">💨 Window breakage</span>
+            <span className="text-blue-400 font-mono">15.8 km</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)
+
+const MitigationPanel = ({ simulationData, onMitigationComplete, onError }) => (
+  <div className="space-y-6">
+    <div className="text-center">
+      <h3 className="text-xl font-bold bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
+        Planetary Defense
+      </h3>
+      <p className="text-sm text-gray-400 mt-1">Deflection & mitigation options</p>
+    </div>
+    
+    <div className="space-y-4">
+      {!simulationData ? (
+        <div className="space-panel-dark p-6 text-center">
+          <div className="text-4xl mb-3">🛡️</div>
+          <p className="text-gray-400 mb-4">Run an impact simulation first to analyze mitigation options</p>
+          <button className="btn-primary text-sm" disabled>
+            Requires Simulation Data
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Deflection Methods */}
+          <div className="space-y-3">
+            <div className="text-sm font-medium text-green-300">Available Deflection Methods</div>
+            
+            <div className="space-panel-dark p-4 hover:border-green-500/50 transition-colors cursor-pointer">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">🚀</span>
+                <span className="font-semibold text-green-300">Kinetic Impactor</span>
+              </div>
+              <p className="text-xs text-gray-400 mb-2">
+                High-velocity spacecraft collision to alter trajectory
+              </p>
+              <div className="flex justify-between text-xs">
+                <span className="text-blue-300">Success Rate: 85%</span>
+                <span className="text-yellow-300">Lead Time: 5-10 years</span>
+              </div>
+            </div>
+            
+            <div className="space-panel-dark p-4 hover:border-blue-500/50 transition-colors cursor-pointer">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">🛰️</span>
+                <span className="font-semibold text-blue-300">Gravity Tractor</span>
+              </div>
+              <p className="text-xs text-gray-400 mb-2">
+                Spacecraft uses gravitational pull for precise deflection
+              </p>
+              <div className="flex justify-between text-xs">
+                <span className="text-blue-300">Success Rate: 95%</span>
+                <span className="text-yellow-300">Lead Time: 10-15 years</span>
+              </div>
+            </div>
+            
+            <div className="space-panel-dark p-4 hover:border-purple-500/50 transition-colors cursor-pointer">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">💥</span>
+                <span className="font-semibold text-purple-300">Nuclear Standoff</span>
+              </div>
+              <p className="text-xs text-gray-400 mb-2">
+                Nuclear explosion near surface for emergency deflection
+              </p>
+              <div className="flex justify-between text-xs">
+                <span className="text-blue-300">Success Rate: 70%</span>
+                <span className="text-yellow-300">Lead Time: 1-5 years</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Mission Planning */}
+          <div className="space-panel-dark p-4 border-l-4 border-green-500">
+            <div className="text-green-300 font-medium mb-2">🎯 Recommended Strategy</div>
+            <div className="text-sm text-white mb-2">
+              Based on asteroid size and warning time: <span className="font-bold text-green-400">Kinetic Impactor Mission</span>
+            </div>
+            <div className="text-xs text-gray-400">
+              Estimated deflection: 0.003° trajectory change<br/>
+              Mission cost: $2.5B USD | Timeline: 8 years
+            </div>
+          </div>
+          
+          <button 
+            className="btn-primary w-full"
+            onClick={() => {
+              onMitigationComplete({
+                method: "kinetic_impactor",
+                success_probability: 0.85,
+                deflection_angle: 0.003,
+                mission_duration: 8
+              })
+            }}
+          >
+            🚀 Plan Deflection Mission
+          </button>
+        </>
+      )}
+    </div>
+  </div>
+)
+
+const LoadingSpinner = () => (
+  <div className="relative">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-warning border-opacity-75"></div>
+    <div className="absolute inset-0 animate-ping rounded-full h-12 w-12 border-2 border-warning opacity-30"></div>
+    <div className="absolute inset-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse"></div>
+  </div>
+)
+
+const InfoTooltip = ({ content, children }) => (
+  <div title={content}>{children}</div>
+)
+
+function App() {
+  const [activeTab, setActiveTab] = useState('simulation')
+  const [simulationData, setSimulationData] = useState(null)
+  const [mitigationData, setMitigationData] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [selectedLocation, setSelectedLocation] = useState(null)
+
+  const handleSimulationComplete = useCallback((data) => {
+    setSimulationData(data)
+    setError(null)
+    setIsLoading(false)
+  }, [])
+
+  const handleMitigationComplete = useCallback((data) => {
+    setMitigationData(data)
+  }, [])
+
+  const handleError = useCallback((error) => {
+    setError(error.message || 'An error occurred')
+    setIsLoading(false)
+  }, [])
+
+  const handleLocationSelect = useCallback((location) => {
+    setSelectedLocation(location)
+  }, [])
+
+  return (
+    <div className="min-h-screen bg-space-gradient overflow-hidden">
+      {/* Header */}
+      <header className="space-panel border-b-0 rounded-none shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <AlertTriangle className="h-10 w-10 text-warning animate-pulse-slow glow-warning" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
+              </div>
+              <div>
+                <h1 className="text-3xl font-black tracking-wider text-white">
+                  <span className="bg-gradient-to-r from-yellow-400 via-red-500 to-orange-600 bg-clip-text text-transparent">
+                    IMPACTOR
+                  </span>
+                  <span className="text-blue-400">-2025</span>
+                </h1>
+                <p className="text-sm text-gray-300 font-medium tracking-wide">
+                  🛡️ Planetary Defense System • 🌍 Earth Impact Simulator
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-6">
+              <div className="hidden sm:flex items-center space-x-2 text-xs text-gray-400">
+                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                <span>SYSTEM ONLINE</span>
+              </div>
+              
+              <InfoTooltip content="NASA Space Apps Challenge 2024 - Interactive tool for asteroid impact assessment and planetary defense planning">
+                <Info className="h-6 w-6 text-blue-400 hover:text-warning transition-colors cursor-help glow-warning" />
+              </InfoTooltip>
+              
+              <a 
+                href="https://github.com/your-team/impactor-2025" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center space-x-2 text-gray-400 hover:text-white transition-all duration-300 hover:scale-110"
+              >
+                <Github className="h-6 w-6" />
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-88px)]">
+        
+        {/* Left Panel - Controls */}
+        <div className="lg:w-96 space-panel-dark border-r-2 border-white/20 overflow-y-auto scrollbar-space">
+          
+          {/* Tab Navigation */}
+          <div className="border-b border-white/20 bg-black/30">
+            <div className="flex">
+              <button
+                className={`flex-1 px-4 py-4 text-sm font-bold transition-all duration-300 ${
+                  activeTab === 'simulation' 
+                    ? 'tab-active transform scale-105' 
+                    : 'tab-inactive'
+                }`}
+                onClick={() => setActiveTab('simulation')}
+              >
+                <Zap className="inline h-5 w-5 mr-2" />
+                <span className="hidden sm:inline">IMPACT</span> SIMULATION
+              </button>
+              <button
+                className={`flex-1 px-4 py-4 text-sm font-bold transition-all duration-300 ${
+                  activeTab === 'mitigation' 
+                    ? 'tab-active transform scale-105' 
+                    : 'tab-inactive'
+                }`}
+                onClick={() => setActiveTab('mitigation')}
+              >
+                <Shield className="inline h-5 w-5 mr-2" />
+                <span className="hidden sm:inline">DEFENSE</span> SYSTEMS
+              </button>
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <div className="p-6">
+            {activeTab === 'simulation' && (
+              <div className="space-y-8">
+                <ParameterPanel
+                  selectedLocation={selectedLocation}
+                  onSimulationStart={() => setIsLoading(true)}
+                  onSimulationComplete={handleSimulationComplete}
+                  onError={handleError}
+                />
+                
+                {isLoading && (
+                  <div className="flex flex-col items-center py-8 space-y-4">
+                    <LoadingSpinner />
+                    <div className="text-center">
+                      <div className="text-warning font-bold animate-pulse">CALCULATING IMPACT...</div>
+                      <div className="text-xs text-gray-400 mt-1">Analyzing trajectory and effects</div>
+                    </div>
+                  </div>
+                )}
+                
+                {simulationData && (
+                  <div className="animate-fade-in">
+                    <ResultsPanel data={simulationData} />
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {activeTab === 'mitigation' && (
+              <div className="animate-fade-in">
+                <MitigationPanel
+                  simulationData={simulationData}
+                  onMitigationComplete={handleMitigationComplete}
+                  onError={handleError}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Panel - Map */}
+        <div className="flex-1 relative">
+          <ImpactMap
+            simulationData={simulationData}
+            mitigationData={mitigationData}
+            onLocationSelect={handleLocationSelect}
+            selectedLocation={selectedLocation}
+          />
+          
+          {error && (
+            <div className="absolute top-6 left-6 right-6 bg-red-600/95 backdrop-blur-lg text-white px-6 py-4 rounded-xl border border-red-400/50 shadow-2xl z-50 animate-pulse">
+              <div className="flex items-center">
+                <AlertTriangle className="h-6 w-6 mr-3 flex-shrink-0 text-yellow-300 animate-bounce" />
+                <div className="flex-1">
+                  <div className="font-bold text-red-100">SYSTEM ERROR</div>
+                  <div className="text-sm text-red-200">{error}</div>
+                </div>
+                <button 
+                  onClick={() => setError(null)}
+                  className="ml-4 text-red-200 hover:text-white text-xl font-bold hover:scale-110 transition-transform"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="space-panel-dark border-t-2 border-white/20 py-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row justify-between items-center text-xs text-gray-400">
+            <div className="flex items-center space-x-4">
+              <span className="font-mono">© 2025 Impactor-2025</span>
+              <span className="text-blue-400">•</span>
+              <span className="font-medium text-blue-300">🚀 NASA Space Apps Challenge</span>
+            </div>
+            
+            <div className="flex items-center space-x-4 mt-2 sm:mt-0">
+              <InfoTooltip content="Physics simplified for rapid prototyping. Not for operational use.">
+                <span className="cursor-help bg-red-500/20 px-2 py-1 rounded border border-red-500/50 animate-pulse">
+                  ⚠️ DEMO MODE
+                </span>
+              </InfoTooltip>
+              <span className="text-blue-400">•</span>
+              <span className="font-mono">Data: NASA CNEOS • USGS</span>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  )
+}
+
+export default App
