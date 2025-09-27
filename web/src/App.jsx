@@ -50,12 +50,42 @@ const ImpactMap = ({ simulationData, mitigationData, onLocationSelect, selectedL
           </div>
         )}
         
-        <button 
-          className="btn-primary text-sm"
-          onClick={() => onLocationSelect({ lat: 40.7128, lon: -74.0060 })}
-        >
-          📍 Set NYC as Target
-        </button>
+        <div className="space-y-3">
+          <div className="text-sm text-gray-400">Quick Locations:</div>
+          <div className="grid grid-cols-2 gap-2">
+            <button 
+              className="btn-primary text-xs py-2"
+              onClick={() => onLocationSelect({ lat: 40.7128, lon: -74.0060 })}
+            >
+              � NYC
+            </button>
+            <button 
+              className="btn-primary text-xs py-2"
+              onClick={() => onLocationSelect({ lat: 51.5074, lon: -0.1278 })}
+            >
+              🇬🇧 London
+            </button>
+            <button 
+              className="btn-primary text-xs py-2"
+              onClick={() => onLocationSelect({ lat: 35.6762, lon: 139.6503 })}
+            >
+              🗾 Tokyo
+            </button>
+            <button 
+              className="btn-primary text-xs py-2"
+              onClick={() => onLocationSelect({ lat: 0, lon: 0 })}
+            >
+              🌊 Ocean
+            </button>
+          </div>
+          
+          <div className="mt-3 p-3 bg-blue-900/30 rounded-lg border border-blue-500/30">
+            <div className="text-xs text-blue-300 mb-2">💡 Pro Tip</div>
+            <div className="text-xs text-gray-400">
+              Click any location above to select an impact target, then use the simulation panel to configure your asteroid parameters.
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     
@@ -93,7 +123,7 @@ const ParameterPanel = ({ selectedLocation, onSimulationStart, onSimulationCompl
       // Prepare API request
       const requestData = {
         lat: selectedLocation.lat,
-        lon: selectedLocation.lng,
+        lon: selectedLocation.lon,
         diameter_m: parameters.diameter,
         density_kg_m3: parameters.density,
         velocity_km_s: parameters.velocity,
@@ -127,8 +157,15 @@ const ParameterPanel = ({ selectedLocation, onSimulationStart, onSimulationCompl
       // Extract thermal effects  
       const thermalBurns = effects.thermal?.find(t => t.J_m2 >= 500000)?.r_km?.p50 || 0
       
-      // Calculate energy in terajoules
-      const energyTJ = (effects.energy_j / 1e12).toFixed(1)
+      // Calculate energy based on physics (simple approximation)
+      const volume = (4/3) * Math.PI * Math.pow(parameters.diameter/2, 3)
+      const mass = volume * parameters.density
+      const velocityMs = parameters.velocity * 1000
+      const energy = 0.5 * mass * Math.pow(velocityMs, 2)
+      const energyTJ = (energy / 1e12).toFixed(1)
+      
+      // Get total affected population
+      const totalAffected = exposure.total_affected?.p50 || 0
       
       // Format results
       const results = {
@@ -136,7 +173,7 @@ const ParameterPanel = ({ selectedLocation, onSimulationStart, onSimulationCompl
         craterDiameter: `${(effects.crater?.rim_r_km?.p50 * 2 || 0).toFixed(1)} km`,
         blastRadius: `${heavyDamage.toFixed(1)} km`,
         thermalRadius: `${thermalBurns.toFixed(1)} km`,
-        populationAffected: `~${Math.round(exposure.total_population / 1000)}k`,
+        populationAffected: totalAffected > 1000000 ? `~${Math.round(totalAffected / 1000000)}M` : `~${Math.round(totalAffected / 1000)}k`,
         
         // Additional details for expanded view
         details: {
@@ -144,8 +181,8 @@ const ParameterPanel = ({ selectedLocation, onSimulationStart, onSimulationCompl
           heavyDamage: `${heavyDamage.toFixed(1)} km`,
           thermalBurns: `${thermalBurns.toFixed(1)} km`, 
           windowBreakage: `${windowBreakage.toFixed(1)} km`,
-          casualties: exposure.casualties,
-          infrastructure: exposure.infrastructure
+          casualties: exposure.casualties || 'Not calculated',
+          infrastructure: exposure.infrastructure || 'Not calculated'
         }
       }
 
