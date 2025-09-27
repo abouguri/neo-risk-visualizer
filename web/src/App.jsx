@@ -70,96 +70,187 @@ const ImpactMap = ({ simulationData, mitigationData, onLocationSelect, selectedL
   </div>
 )
 
-const ParameterPanel = ({ selectedLocation, onSimulationStart, onSimulationComplete, onError }) => (
-  <div className="space-y-6">
-    <div className="text-center">
-      <h3 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-        Asteroid Parameters
-      </h3>
-      <p className="text-sm text-gray-400 mt-1">Configure impact scenario</p>
-    </div>
-    
-    <div className="space-y-4">
-      <div className="space-panel-dark p-4 space-y-3">
-        <label className="block text-sm font-medium text-blue-300">
-          <span className="flex items-center gap-2">
-            🪨 Asteroid Diameter (m)
-          </span>
-        </label>
-        <input 
-          type="number" 
-          defaultValue="100" 
-          className="space-input w-full"
-          placeholder="10 - 10000"
-        />
+const ParameterPanel = ({ selectedLocation, onSimulationStart, onSimulationComplete, onError }) => {
+  const [parameters, setParameters] = React.useState({
+    diameter: 100,
+    velocity: 20,
+    angle: 45,
+    density: 2500
+  })
+  
+  const [isLoading, setIsLoading] = React.useState(false)
+
+  const handleSimulation = async () => {
+    if (!selectedLocation) {
+      onError("Please select a target location on the map first")
+      return
+    }
+
+    setIsLoading(true)
+    onSimulationStart()
+
+    try {
+      // Prepare API request
+      const requestData = {
+        lat: selectedLocation.lat,
+        lon: selectedLocation.lng,
+        diameter_m: parameters.diameter,
+        density_kg_m3: parameters.density,
+        velocity_km_s: parameters.velocity,
+        angle_deg: parameters.angle
+      }
+
+      // Make API call to backend
+      const response = await fetch('http://localhost:8000/simulate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+      })
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      
+      // Process the response to extract key metrics
+      const effects = data.effects
+      const exposure = data.exposure
+      
+      // Extract blast effects
+      const totalDestruction = effects.blast?.find(b => b.psi >= 20)?.r_km?.p50 || 0
+      const heavyDamage = effects.blast?.find(b => b.psi >= 5)?.r_km?.p50 || 0
+      const windowBreakage = effects.blast?.find(b => b.psi >= 1)?.r_km?.p50 || 0
+      
+      // Extract thermal effects  
+      const thermalBurns = effects.thermal?.find(t => t.J_m2 >= 500000)?.r_km?.p50 || 0
+      
+      // Calculate energy in terajoules
+      const energyTJ = (effects.energy_j / 1e12).toFixed(1)
+      
+      // Format results
+      const results = {
+        energy: `${energyTJ} TJ`,
+        craterDiameter: `${(effects.crater?.rim_r_km?.p50 * 2 || 0).toFixed(1)} km`,
+        blastRadius: `${heavyDamage.toFixed(1)} km`,
+        thermalRadius: `${thermalBurns.toFixed(1)} km`,
+        populationAffected: `~${Math.round(exposure.total_population / 1000)}k`,
         
-        <label className="block text-sm font-medium text-blue-300">
-          <span className="flex items-center gap-2">
-            ⚡ Impact Velocity (km/s)
-          </span>
-        </label>
-        <input 
-          type="number" 
-          defaultValue="20" 
-          className="space-input w-full"
-          placeholder="5 - 100"
-        />
-        
-        <label className="block text-sm font-medium text-blue-300">
-          <span className="flex items-center gap-2">
-            📐 Impact Angle (°)
-          </span>
-        </label>
-        <input 
-          type="number" 
-          defaultValue="45" 
-          className="space-input w-full"
-          placeholder="1 - 90"
-        />
-        
-        <label className="block text-sm font-medium text-blue-300">
-          <span className="flex items-center gap-2">
-            ⚖️ Density (kg/m³)
-          </span>
-        </label>
-        <input 
-          type="number" 
-          defaultValue="2500" 
-          className="space-input w-full"
-          placeholder="1000 - 8000"
-        />
+        // Additional details for expanded view
+        details: {
+          totalDestruction: `${totalDestruction.toFixed(1)} km`,
+          heavyDamage: `${heavyDamage.toFixed(1)} km`,
+          thermalBurns: `${thermalBurns.toFixed(1)} km`, 
+          windowBreakage: `${windowBreakage.toFixed(1)} km`,
+          casualties: exposure.casualties,
+          infrastructure: exposure.infrastructure
+        }
+      }
+
+      onSimulationComplete(results)
+      
+    } catch (error) {
+      console.error('Simulation failed:', error)
+      onError(`Simulation failed: ${error.message}`)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        <h3 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+          Asteroid Parameters
+        </h3>
+        <p className="text-sm text-gray-400 mt-1">Configure impact scenario</p>
       </div>
       
-      {selectedLocation && (
-        <div className="space-panel-dark p-3 border-l-4 border-warning">
-          <div className="text-xs text-gray-400">Impact Location</div>
-          <div className="text-sm font-mono text-white">
-            {selectedLocation.lat.toFixed(4)}°, {selectedLocation.lon.toFixed(4)}°
-          </div>
+      <div className="space-y-4">
+        <div className="space-panel-dark p-4 space-y-3">
+          <label className="block text-sm font-medium text-blue-300">
+            <span className="flex items-center gap-2">
+              🪨 Asteroid Diameter (m)
+            </span>
+          </label>
+          <input 
+            type="number" 
+            value={parameters.diameter}
+            onChange={(e) => setParameters({...parameters, diameter: parseFloat(e.target.value) || 100})}
+            className="space-input w-full"
+            placeholder="10 - 10000"
+            min="10"
+            max="10000"
+          />
+          
+          <label className="block text-sm font-medium text-blue-300">
+            <span className="flex items-center gap-2">
+              ⚡ Impact Velocity (km/s)
+            </span>
+          </label>
+          <input 
+            type="number" 
+            value={parameters.velocity}
+            onChange={(e) => setParameters({...parameters, velocity: parseFloat(e.target.value) || 20})}
+            className="space-input w-full"
+            placeholder="5 - 100"
+            min="5"
+            max="100"
+          />
+          
+          <label className="block text-sm font-medium text-blue-300">
+            <span className="flex items-center gap-2">
+              📐 Impact Angle (°)
+            </span>
+          </label>
+          <input 
+            type="number" 
+            value={parameters.angle}
+            onChange={(e) => setParameters({...parameters, angle: parseFloat(e.target.value) || 45})}
+            className="space-input w-full"
+            placeholder="1 - 90"
+            min="1"
+            max="90"
+          />
+          
+          <label className="block text-sm font-medium text-blue-300">
+            <span className="flex items-center gap-2">
+              ⚖️ Density (kg/m³)
+            </span>
+          </label>
+          <input 
+            type="number" 
+            value={parameters.density}
+            onChange={(e) => setParameters({...parameters, density: parseFloat(e.target.value) || 2500})}
+            className="space-input w-full"
+            placeholder="1000 - 8000"
+            min="1000"
+            max="8000"
+          />
         </div>
-      )}
-      
-      <button 
-        className="btn-warning w-full text-lg font-bold glow-warning animate-float"
-        onClick={() => {
-          onSimulationStart()
-          // Simulate API call
-          setTimeout(() => {
-            onSimulationComplete({
-              energy: "1.2 TJ",
-              craterDiameter: "1.5 km",
-              blastRadius: "5 km",
-              thermalRadius: "8.2 km",
-              populationAffected: "~250,000"
-            })
-          }, 2000)
-        }}
-      >
-        🚀 SIMULATE IMPACT
-      </button>
+        
+        {selectedLocation && (
+          <div className="space-panel-dark p-3 border-l-4 border-warning">
+            <div className="text-xs text-gray-400">Impact Location</div>
+            <div className="text-sm font-mono text-white">
+              {selectedLocation.lat.toFixed(4)}°, {selectedLocation.lng.toFixed(4)}°
+            </div>
+          </div>
+        )}
+        
+        <button 
+          className={`btn-warning w-full text-lg font-bold glow-warning ${isLoading ? 'opacity-50 cursor-not-allowed' : 'animate-float'}`}
+          onClick={handleSimulation}
+          disabled={isLoading || !selectedLocation}
+        >
+          {isLoading ? '⏳ CALCULATING...' : '🚀 SIMULATE IMPACT'}
+        </button>
+      </div>
     </div>
-  </div>
-)
+  )
+}
 
 const ResultsPanel = ({ data }) => (
   <div className="space-y-6">
@@ -218,7 +309,7 @@ const ResultsPanel = ({ data }) => (
         <div className="space-y-2 text-xs">
           <div className="flex justify-between items-center py-1 border-b border-white/10">
             <span className="text-gray-400">💥 Total destruction</span>
-            <span className="text-red-400 font-mono">2.1 km</span>
+            <span className="text-red-400 font-mono">{data.details?.totalDestruction || '0.0 km'}</span>
           </div>
           <div className="flex justify-between items-center py-1 border-b border-white/10">
             <span className="text-gray-400">🏢 Heavy damage</span>
@@ -230,7 +321,7 @@ const ResultsPanel = ({ data }) => (
           </div>
           <div className="flex justify-between items-center py-1">
             <span className="text-gray-400">💨 Window breakage</span>
-            <span className="text-blue-400 font-mono">15.8 km</span>
+            <span className="text-blue-400 font-mono">{data.details?.windowBreakage || '0.0 km'}</span>
           </div>
         </div>
       </div>
