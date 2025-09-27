@@ -1,5 +1,45 @@
 import React, { useState, useCallback } from 'react'
 import { AlertTriangle, Zap, Shield, Info, Github, ExternalLink } from 'lucide-react'
+
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('React Error Boundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-red-900 flex items-center justify-center p-4">
+          <div className="bg-red-800 border border-red-600 rounded-lg p-6 max-w-md">
+            <h2 className="text-white font-bold text-xl mb-4">Application Error</h2>
+            <p className="text-red-200 mb-4">Something went wrong. Please refresh the page.</p>
+            <pre className="text-xs text-red-300 bg-red-950 p-2 rounded overflow-auto">
+              {this.state.error?.toString()}
+            </pre>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
+            >
+              Refresh Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 // Import components (we'll create these next)
 // import ImpactMap from './components/Map/ImpactMap'
 // import ParameterPanel from './components/Simulation/ParameterPanel'
@@ -272,7 +312,7 @@ const ParameterPanel = ({ selectedLocation, onSimulationStart, onSimulationCompl
           <div className="space-panel-dark p-3 border-l-4 border-warning">
             <div className="text-xs text-gray-400">Impact Location</div>
             <div className="text-sm font-mono text-white">
-              {selectedLocation.lat.toFixed(4)}°, {selectedLocation.lng.toFixed(4)}°
+              {selectedLocation.lat.toFixed(4)}°, {selectedLocation.lon.toFixed(4)}°
             </div>
           </div>
         )}
@@ -500,7 +540,13 @@ function App() {
   }, [])
 
   const handleLocationSelect = useCallback((location) => {
-    setSelectedLocation(location)
+    try {
+      console.log('Setting location:', location)
+      setSelectedLocation(location)
+      console.log('Location set successfully')
+    } catch (error) {
+      console.error('Error setting location:', error)
+    }
   }, [])
 
   return (
@@ -681,4 +727,11 @@ function App() {
   )
 }
 
-export default App
+// Wrapped App with Error Boundary
+const AppWithErrorBoundary = () => (
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+)
+
+export default AppWithErrorBoundary
