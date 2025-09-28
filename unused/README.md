@@ -27,6 +27,9 @@ This folder contains old/duplicate files that have been moved here for organizat
 ### Temporary Files
 - `test.html` - Temporary test file for debugging
 
+### Replaced Scripts
+- `docker-demo.sh` - Original Docker demo script (replaced by enhanced Makefile)
+
 ## Notes:
 - These files are kept for reference but are no longer used
 - The current project uses the organized structure in `backend/` and `web/` folders
