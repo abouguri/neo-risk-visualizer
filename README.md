@@ -270,8 +270,7 @@ This project was developed for the **NASA Space Apps Challenge 2025** under the 
 - **GitHub Repository:** https://github.com/abouguri/neo-risk-visualizer
 - **Live Demo:** http://localhost:3000 (when running locally)
 - **API Documentation:** http://localhost:8000/docs (when running locally)
-- **NASA Space Apps Challenge:** https://spaceapps.nasa.gov/
-
+- **NASA Space Apps Challenge:** https://www.spaceappschallenge.org/
 ---
 
 *Built with 💙 for planetary defense and space exploration*
